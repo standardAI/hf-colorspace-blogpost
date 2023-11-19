@@ -85,6 +85,31 @@
     If each value can range between -4 and 4 at the point of decoding, then in a 16-bit floating point format with half precision, each latent pixel can contain 16,384 distinct values for each of the 4 channels.
   </p>
 
+
+  <p>With this understanding, we can create an approximation function which directly converts the latents to RGB:</p>
+  <pre>
+  def latents_to_rgb(latents):
+      weights = (
+          (60, -60, 25, -70),
+          (60,  -5, 15, -50),
+          (60,  10, -5, -35)
+      )
+
+      weights_tensor = torch.t(torch.tensor(weights, dtype=latents.dtype).to(latents.device))
+      biases_tensor = torch.tensor((150, 140, 130), dtype=latents.dtype).to(latents.device)
+      rgb_tensor = torch.einsum("...lxy,lr -> ...rxy", latents, weights_tensor) + biases_tensor.unsqueeze(-1).unsqueeze(-1)
+      image_array = rgb_tensor.clamp(0, 255)[0].byte().cpu().numpy()
+      image_array = image_array.transpose(1, 2, 0)  # Change the order of dimensions
+
+      return Image.fromarray(image_array)</pre>
+  <p>
+    Here we have the latents_to_rgb result and a regular decoded output, resized for comparison:
+  </p>
+  <div class="side-by-side">
+    <img src="latents_rgb_approximation.png" style="width: 128px" />
+    <img src="latents_rgb_dedoded.png" style="width: 128px" />
+  </div>
+
   <p>
     Relatively few things in nature are blue, or white. These colors are most prominent in the sky, during enjoyable conditions.<br>
     So, the model, knowing reality through images, thinks in cyan/red (channel 1) and lime/medium purple (channel 2), where Red and Green are primary and blue is secondary. This is why many SDXL generations are biased towards yellow (red + green).
@@ -116,7 +141,7 @@
     It's far easier to blur a sharp image, shift the color balance, reduce contrast, get nonsensical details and limit the color range than to improve it.
   </p>
   <p>
-    SDXL has a very prominent tendency to bias and put values outside of the actual boundaries (left image). Which is easily solved by centering the values and getting them within the boundaries (right image):
+    SDXL has a very prominent tendency to color bias and put values outside of the actual boundaries (left image). Which is easily solved by centering the values and getting them within the boundaries (right image):
   </p>
   <div class="side-by-side">
     <img src="color_correction_original.jpg" />
@@ -132,17 +157,17 @@
   </h3>
   <p>
     <em>
-      <strong>seed:</em>strong> 77777777
+      <strong>seed:</strong> 77777777
     </em><br>
     <em>
-      <strong>guidance_scale:</em>strong> 20
-    </em>
+      <strong>guidance_scale:</strong> 20
+    </em><br>
     <em>
-      <strong>steps with base:</em>strong> 23
-    </em>
+      <strong>steps with base:</strong> 23
+    </em><br>
     <em>
-      <strong>steps with refiner:</em>strong> 10
-    </em>
+      <strong>steps with refiner:</strong> 10
+    </em><br>
     <em>
       <strong>prompt:</strong> Cinematic.Beautiful smile action woman in detailed white mecha gundam armor with red details,green details,blue details,colorful,star wars universe,lush garden,flowers,volumetric lighting,perfect eyes,perfect teeth,blue sky,bright,intricate details,extreme detail of environment,infinite focus,well lit,interesting clothes,radial gradient fade,directional particle lighting,wow
     </em><br>
